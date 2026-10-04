@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { createClient } from "@/lib/supabase/server";
 
 type AnalysisResult = {
@@ -41,20 +43,81 @@ function parseGeneratedContent(content: string): GeneratedInsights {
   }
 }
 
-async function readProductPage(url: string) {
+function isPrivateIp(address: string) {
+  const normalized = address.toLowerCase().replace(/^\[|\]$/g, "");
+  if (isIP(normalized) === 4) {
+    const octets = normalized.split(".").map(Number);
+    const [first, second] = octets;
+    return first === 0 || first === 10 || first === 127 || first >= 224
+      || (first === 100 && second >= 64 && second <= 127)
+      || (first === 169 && second === 254)
+      || (first === 172 && second >= 16 && second <= 31)
+      || (first === 192 && (second === 0 || second === 168))
+      || (first === 198 && (second === 18 || second === 19))
+      || (first === 203 && second === 0);
+  }
+  if (isIP(normalized) === 6) {
+    return normalized === "::" || normalized === "::1"
+      || normalized.startsWith("fc") || normalized.startsWith("fd")
+      || normalized.startsWith("fe8") || normalized.startsWith("fe9")
+      || normalized.startsWith("fea") || normalized.startsWith("feb")
+      || normalized.startsWith("ff")
+      || normalized.startsWith("::ffff:127.")
+      || normalized.startsWith("::ffff:10.")
+      || normalized.startsWith("::ffff:192.168.");
+  }
+  return true;
+}
+
+async function validatePublicUrl(value: string) {
   let parsedUrl: URL;
   try {
-    parsedUrl = new URL(url);
+    parsedUrl = new URL(value);
   } catch {
     throw new Error("Product URL is not valid.");
   }
-  if (!["http:", "https:"].includes(parsedUrl.protocol)) throw new Error("Product URL must use http or https.");
-  const response = await fetch(parsedUrl, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+  if (parsedUrl.protocol !== "https:") throw new Error("Product URL must use HTTPS.");
+  if (parsedUrl.username || parsedUrl.password || parsedUrl.port) throw new Error("Product URL must not contain credentials or a custom port.");
+  const addresses = isIP(parsedUrl.hostname)
+    ? [parsedUrl.hostname]
+    : (await lookup(parsedUrl.hostname, { all: true })).map(({ address }) => address);
+  if (!addresses.length || addresses.some(isPrivateIp)) throw new Error("Product URL must point to a public host.");
+  return parsedUrl;
+}
+
+async function readProductPage(url: string) {
+  let parsedUrl = await validatePublicUrl(url);
+  let response: Response | undefined;
+  for (let redirectCount = 0; redirectCount <= 3; redirectCount += 1) {
+    response = await fetch(parsedUrl, {
+      cache: "no-store",
+      redirect: "manual",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (![301, 302, 303, 307, 308].includes(response.status)) break;
+    const location = response.headers.get("location");
+    if (!location || redirectCount === 3) throw new Error("The product page redirected too many times.");
+    parsedUrl = await validatePublicUrl(new URL(location, parsedUrl).toString());
+  }
+  if (!response) throw new Error("The product page could not be fetched.");
   if (!response.ok) throw new Error("The product page could not be fetched. Check the URL and try again.");
   if (!(response.headers.get("content-type") || "").includes("text/html")) {
     throw new Error("The product URL does not contain an HTML page.");
   }
-  const html = (await response.text()).slice(0, 250_000);
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > 250_000) {
+    throw new Error("The product page is too large to analyze.");
+  }
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("The product page returned an empty response.");
+  const decoder = new TextDecoder();
+  let html = "";
+  while (html.length < 250_000) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    html += decoder.decode(value, { stream: true });
+  }
+  await reader.cancel();
   return html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;|&#160;/gi, " ")

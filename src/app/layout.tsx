@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Turn your product into a clear advertising plan.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
