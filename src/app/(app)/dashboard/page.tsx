@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { plans } from "@/lib/billing/plans";
-import { PLAN_LIMITS, planKeyFromId } from "@/lib/billing/config";
+import { PLAN_LIMITS, planKeyFromId, variantIdForPlan } from "@/lib/billing/config";
 import { createCheckout } from "@/lib/actions/billing";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
@@ -59,7 +59,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <p className="mt-2 min-h-12 text-sm leading-6 text-[#647068]">{plan.description}</p>
             <div className="mt-5 space-y-2 text-sm font-medium text-[#334038]"><p>✦ {plan.analyses}</p><p>▦ {plan.projects}</p></div>
             <ul className="mt-5 space-y-2 border-t border-black/5 pt-4 text-sm text-[#647068]">{plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul>
-            {isCurrent ? <div className="mt-6 w-full rounded-xl bg-[#327044] px-4 py-3 text-center text-sm font-semibold text-white">Current plan</div> : locked ? <button type="button" disabled className="mt-6 w-full cursor-not-allowed rounded-xl bg-[#e6e8e4] px-4 py-3 text-sm font-semibold text-[#8b968d]">{plan.status === "coming-soon" ? "Coming in a future update" : "Not available yet"}</button> : <form action={createCheckout}><input type="hidden" name="variant_id" value={plan.key === "starter" ? process.env.LEMONSQUEEZY_STARTER_VARIANT_ID : process.env.LEMONSQUEEZY_PRO_VARIANT_ID} /><button type="submit" className="mt-6 w-full rounded-xl bg-[#17201b] px-4 py-3 text-sm font-semibold text-white hover:bg-[#2b3d32]">Start {plan.name}</button></form>}
+            {isCurrent ? <div className="mt-6 w-full rounded-xl bg-[#327044] px-4 py-3 text-center text-sm font-semibold text-white">Current plan</div> : locked ? <button type="button" disabled className="mt-6 w-full cursor-not-allowed rounded-xl bg-[#e6e8e4] px-4 py-3 text-sm font-semibold text-[#8b968d]">{plan.status === "coming-soon" ? "Coming in a future update" : "Not available yet"}</button> : <form action={createCheckout}><input type="hidden" name="variant_id" value={variantIdForPlan(plan.key as "starter" | "pro")} /><button type="submit" className="mt-6 w-full rounded-xl bg-[#17201b] px-4 py-3 text-sm font-semibold text-white hover:bg-[#2b3d32]">Start {plan.name}</button></form>}
           </article>;
         })}
       </div>

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { variantIdForPlan } from "@/lib/billing/config";
 
 function requiredEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -12,8 +13,8 @@ function requiredEnv(name: string) {
 export async function createCheckout(formData: FormData) {
   const variantId = String(formData.get("variant_id") ?? "").trim();
   const allowedVariants = [
-    process.env.LEMONSQUEEZY_STARTER_VARIANT_ID,
-    process.env.LEMONSQUEEZY_PRO_VARIANT_ID,
+    variantIdForPlan("starter"),
+    variantIdForPlan("pro"),
   ].filter(Boolean);
   if (!variantId || !allowedVariants.includes(variantId)) {
     throw new Error("This plan is not available for checkout.");
