@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { createClient } from "@/lib/supabase/server";
+import { PLAN_LIMITS, planKeyFromId } from "@/lib/billing/config";
 
 type AnalysisResult = {
   summary: string;
@@ -190,7 +191,15 @@ export async function generateProjectInsights(formData: FormData) {
   if (!user) redirect("/login");
   const apiKey = clean(process.env.AI_PROVIDER_API_KEY);
   if (!apiKey) throw new Error("AI_PROVIDER_API_KEY is not configured on the server.");
-  const monthlyQuota = Math.max(1, Number.parseInt(process.env.AI_MONTHLY_QUOTA || "10", 10) || 10);
+  const { data: subscription } = await supabase
+    .from("subscriptions")
+    .select("plan_id, status, cancelled")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const activePlan = subscription && !subscription.cancelled && ["active", "on_trial", "paused"].includes(subscription.status)
+    ? planKeyFromId(subscription.plan_id)
+    : "free";
+  const monthlyQuota = PLAN_LIMITS[activePlan].analyses;
   const { data: quotaAvailable, error: quotaError } = await supabase.rpc("consume_ai_generation", {
     p_user_id: user.id,
     p_limit: monthlyQuota,

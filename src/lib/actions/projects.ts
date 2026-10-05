@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { PLAN_LIMITS, planKeyFromId } from "@/lib/billing/config";
 
 function value(formData: FormData, key: string) { return String(formData.get(key) ?? "").trim(); }
 
@@ -14,6 +15,16 @@ export async function createProject(formData: FormData) {
   if (!name) throw new Error("Project name is required.");
   const productUrl = value(formData, "product_url");
   if (!productUrl) throw new Error("Product URL is required.");
+  const [{ count }, { data: subscription }] = await Promise.all([
+    supabase.from("projects").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("subscriptions").select("plan_id, status, cancelled").eq("user_id", user.id).maybeSingle(),
+  ]);
+  const activePlan = subscription && !subscription.cancelled && ["active", "on_trial", "paused"].includes(subscription.status)
+    ? planKeyFromId(subscription.plan_id)
+    : "free";
+  if ((count ?? 0) >= PLAN_LIMITS[activePlan].projects) {
+    throw new Error(`Your ${activePlan} plan allows up to ${PLAN_LIMITS[activePlan].projects} projects.`);
+  }
   const { data, error } = await supabase.from("projects").insert({ user_id: user.id, name, product_url: productUrl, product_description: value(formData, "product_description") || null, ad_request: value(formData, "ad_request") || null }).select("id").single();
   if (error) throw new Error(error.message);
   redirect(`/projects/${data.id}`);

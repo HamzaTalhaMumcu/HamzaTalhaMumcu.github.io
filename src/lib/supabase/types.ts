@@ -82,6 +82,34 @@ export type Database = {
         }>;
         Relationships: [];
       };
+      subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          plan_id: string;
+          status: string;
+          provider_customer_id: string | null;
+          provider_subscription_id: string | null;
+          current_period_end: string | null;
+          created_at: string;
+          updated_at: string;
+          cancelled: boolean;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          plan_id: string;
+          status: string;
+          provider_customer_id?: string | null;
+          provider_subscription_id?: string | null;
+          current_period_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          cancelled?: boolean;
+        };
+        Update: Partial<Omit<Database["public"]["Tables"]["subscriptions"]["Insert"], "id" | "user_id">>;
+        Relationships: [];
+      };
       projects: {
         Row: Project;
         Insert: Omit<Project, "id" | "created_at" | "updated_at">;

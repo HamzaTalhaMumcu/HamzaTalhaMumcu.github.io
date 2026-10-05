@@ -1,19 +1,26 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { plans } from "@/lib/billing/plans";
+import { PLAN_LIMITS, planKeyFromId } from "@/lib/billing/config";
+import { createCheckout } from "@/lib/actions/billing";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { q } = await searchParams;
   const search = q?.trim().toLowerCase() ?? "";
-  const [{ data: allProjects, error }, { data: usage }] = await Promise.all([
+  const [{ data: allProjects, error }, { data: usage }, { data: subscription }] = await Promise.all([
     supabase.from("projects").select("*").eq("user_id", user?.id ?? "").order("updated_at", { ascending: false }),
     supabase.from("ai_usage").select("generations, period_start").eq("user_id", user?.id ?? "").maybeSingle(),
+    supabase.from("subscriptions").select("plan_id, status, cancelled").eq("user_id", user?.id ?? "").maybeSingle(),
   ]);
   const projects = search
     ? allProjects?.filter((project) => [project.name, project.product_url, project.product_description, project.ad_request].some((value) => value?.toLowerCase().includes(search)))
     : allProjects;
-  const quota = Math.max(1, Number.parseInt(process.env.AI_MONTHLY_QUOTA || "10", 10) || 10);
+  const activePlan = subscription && !subscription.cancelled && ["active", "on_trial", "paused"].includes(subscription.status)
+    ? planKeyFromId(subscription.plan_id)
+    : "free";
+  const quota = PLAN_LIMITS[activePlan].analyses;
   const used = usage?.generations ?? 0;
 
   return <main className="min-h-screen mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
@@ -33,6 +40,29 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="rounded-2xl bg-white p-5 shadow-sm"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#8b968d]">Projects</p><p className="mt-2 text-3xl font-semibold text-[#17201b]">{allProjects?.length ?? 0}</p><p className="mt-1 text-sm text-[#647068]">Ideas in your workspace</p></div>
       <div className="rounded-2xl bg-white p-5 shadow-sm"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#8b968d]">AI analyses this month</p><p className="mt-2 text-3xl font-semibold text-[#17201b]">{used}<span className="text-lg text-[#8b968d]"> / {quota}</span></p><p className="mt-1 text-sm text-[#647068]">Generations used</p></div>
       <div className="rounded-2xl bg-[#f0e5d8] p-5 shadow-sm"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#8f4a31]">Remaining</p><p className="mt-2 text-3xl font-semibold text-[#a14a36]">{Math.max(0, quota - used)}</p><p className="mt-1 text-sm text-[#8f4a31]">AI analyses available</p></div>
+    </section>
+
+    <section className="mt-8">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div><p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#e45b35]">Plans</p><h2 className="mt-1 text-2xl font-semibold">Choose the level that fits your business</h2></div>
+        <p className="text-sm text-[#647068]">Paid plans will open after the test checkout is ready.</p>
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        {plans.map((plan) => {
+          const isCurrent = plan.key === activePlan;
+          const isCheckoutReady = plan.key === "starter" || plan.key === "pro";
+          const locked = !isCurrent && !isCheckoutReady;
+          return <article key={plan.name} className={`relative rounded-2xl border p-5 shadow-sm ${plan.status === "coming-soon" ? "border-[#d8c7e8] bg-[#f6f0fb]" : plan.status === "current" ? "border-[#b9d7bf] bg-[#edf8ef]" : "border-[#e4e7e2] bg-white"}`}>
+            {locked && <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-[#17201b] px-2.5 py-1 text-xs font-semibold text-white"><span aria-hidden="true">🔒</span>{plan.status === "coming-soon" ? "Coming soon" : "Test mode"}</div>}
+            <p className="text-sm font-semibold uppercase tracking-[0.15em] text-[#8b968d]">{plan.badge}</p>
+            <div className="mt-3 flex items-baseline gap-2"><h3 className="text-2xl font-semibold">{plan.name}</h3><span className="text-3xl font-semibold text-[#17201b]">{plan.price}</span>{plan.cadence && <span className="text-sm text-[#647068]">{plan.cadence}</span>}</div>
+            <p className="mt-2 min-h-12 text-sm leading-6 text-[#647068]">{plan.description}</p>
+            <div className="mt-5 space-y-2 text-sm font-medium text-[#334038]"><p>✦ {plan.analyses}</p><p>▦ {plan.projects}</p></div>
+            <ul className="mt-5 space-y-2 border-t border-black/5 pt-4 text-sm text-[#647068]">{plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul>
+            {isCurrent ? <div className="mt-6 w-full rounded-xl bg-[#327044] px-4 py-3 text-center text-sm font-semibold text-white">Current plan</div> : locked ? <button type="button" disabled className="mt-6 w-full cursor-not-allowed rounded-xl bg-[#e6e8e4] px-4 py-3 text-sm font-semibold text-[#8b968d]">{plan.status === "coming-soon" ? "Coming in a future update" : "Not available yet"}</button> : <form action={createCheckout}><input type="hidden" name="variant_id" value={plan.key === "starter" ? process.env.LEMONSQUEEZY_STARTER_VARIANT_ID : process.env.LEMONSQUEEZY_PRO_VARIANT_ID} /><button type="submit" className="mt-6 w-full rounded-xl bg-[#17201b] px-4 py-3 text-sm font-semibold text-white hover:bg-[#2b3d32]">Start {plan.name}</button></form>}
+          </article>;
+        })}
+      </div>
     </section>
 
     <div className="mt-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">

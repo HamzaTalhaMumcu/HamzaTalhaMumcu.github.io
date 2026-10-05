@@ -15,11 +15,33 @@ The current foundation includes:
 - Campaign strategy with channels, messaging pillars, and creative directions
 - Starter hooks and ad copy persisted per project
 - In-app feedback form with Supabase persistence and ownership-focused RLS
+- Free, Starter, Pro, and future X plan definitions shown in the dashboard
 
 The insight engine uses Gemini. The server visits the product URL,
 extracts the page content, and sends it to Gemini together with the user's advertising brief.
 Users never enter an API key; configure `AI_PROVIDER_API_KEY`, `AI_MODEL`, and optionally
-`AI_MONTHLY_QUOTA` on the server. The default monthly quota is 10 analyses per user.
+`AI_MONTHLY_QUOTA` is retained for local compatibility; production plan quotas are
+defined in `src/lib/billing/config.ts` and applied from the user's verified subscription.
+
+## Billing roadmap
+
+The dashboard currently shows the Free, Starter, Pro, and future X plans. Paid plan
+checkout remains locked until the Lemon Squeezy test checkout and webhook flow are
+verified. Create these products as monthly recurring variants in Lemon Squeezy test mode:
+
+- PITLO Starter — `$9/month` — 50 AI analyses and up to 20 projects
+- PITLO Pro — `$19/month` — 200 AI analyses and unlimited projects
+- PITLO X — `$99/month` — future plan, keep checkout disabled until AI video generation is shipped
+
+The Free plan is available in-app and provides 10 AI analyses per month. Lemon Squeezy
+test-mode products are separate from live-mode products, so recreate or copy them when
+launching production billing. The eventual integration must verify signed webhooks
+server-side before changing a user's plan or quota.
+
+For billing, configure `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`,
+`LEMONSQUEEZY_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, and the three
+`LEMONSQUEEZY_*_VARIANT_ID` values. Run `0006_add_subscriptions.sql` before testing
+checkout. The webhook URL is `/api/webhooks/lemonsqueezy`.
 
 ## Local development
 
