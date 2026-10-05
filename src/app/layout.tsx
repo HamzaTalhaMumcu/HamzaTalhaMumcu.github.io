@@ -13,8 +13,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PITLO — Your AI advertising team",
-  description: "Turn your product into a clear advertising plan.",
+  metadataBase: new URL("https://pitlo.me"),
+  title: {
+    default: "PITLO — Your AI advertising team",
+    template: "%s | PITLO",
+  },
+  description:
+    "PITLO turns your product into a clear audience, advertising strategy, hooks, and ad copy.",
+  openGraph: {
+    type: "website",
+    url: "https://pitlo.me/",
+    siteName: "PITLO",
+    title: "PITLO — Your AI advertising team",
+    description:
+      "Turn your product into a clear audience, advertising strategy, hooks, and ad copy.",
+  },
+  twitter: {
+    card: "summary",
+    title: "PITLO — Your AI advertising team",
+    description:
+      "Turn your product into a clear audience, advertising strategy, hooks, and ad copy.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export const dynamic = "force-dynamic";
@@ -25,7 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }

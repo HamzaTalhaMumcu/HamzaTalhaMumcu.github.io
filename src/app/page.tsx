@@ -1,4 +1,12 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
 
 const features = [
   { icon: "◒", title: "Understand your audience", text: "Turn product context into a clear audience, pain points, and promise." },
@@ -6,8 +14,43 @@ const features = [
   { icon: "↗", title: "Create with confidence", text: "Start every campaign with hooks and ad copy ready for your next experiment." },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        name: "PITLO",
+        url: "https://pitlo.me/",
+      },
+      {
+        "@type": "WebSite",
+        name: "PITLO",
+        url: "https://pitlo.me/",
+        description:
+          "PITLO turns your product into a clear audience, advertising strategy, hooks, and ad copy.",
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: "PITLO",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web browser",
+        url: "https://pitlo.me/",
+        description:
+          "PITLO turns your product into a clear audience, advertising strategy, hooks, and ad copy.",
+      },
+    ],
+  };
+
   return <main className="min-h-screen overflow-hidden bg-[#f7f7f5] text-[#17201b]">
+    <script
+      type="application/ld+json"
+      nonce={nonce}
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+      }}
+    />
     <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-6 sm:py-6"><Link href="/" className="text-xl font-bold tracking-tight">PITLO<span className="text-[#e45b35]">.</span></Link><div className="flex items-center gap-2 sm:gap-3"><Link href="/login" className="rounded-full px-3 py-2 text-sm font-medium hover:bg-white sm:px-4">Log in</Link><Link href="/signup" className="rounded-full bg-[#17201b] px-4 py-2 text-sm font-medium text-white hover:bg-[#2b3d32] sm:px-5">Start free</Link></div></nav>
     <section className="relative mx-auto grid max-w-6xl gap-12 px-5 pb-20 pt-12 sm:px-6 sm:pb-24 sm:pt-20 lg:grid-cols-[1.05fr_.95fr] lg:items-center"><div className="absolute -left-32 top-20 h-72 w-72 rounded-full bg-[#e45b35]/10 blur-3xl" /><div className="relative"><p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-[#e45b35]">Your AI advertising team</p><h1 className="max-w-2xl text-5xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-7xl">Build ads from a product you understand.</h1><p className="mt-6 max-w-xl text-lg leading-8 text-[#647068]">PITLO turns your product into a clear audience, strategy, and set of creative directions—so you can market with confidence.</p><Link href="/signup" className="mt-8 inline-flex rounded-full bg-[#e45b35] px-6 py-3.5 font-semibold text-white shadow-sm hover:bg-[#c94b29]">Create your first project <span className="ml-2">→</span></Link></div><div className="relative rounded-[2rem] bg-[#17201b] p-4 shadow-2xl shadow-[#17201b]/15 sm:p-5"><div className="rounded-2xl bg-[#f1f1ec] p-5 sm:p-6"><div className="flex items-center justify-between border-b border-[#d9ddd6] pb-5"><span className="font-semibold">Product snapshot</span><span className="rounded-full bg-[#d8eadb] px-3 py-1 text-xs font-medium text-[#327044]">Ready to explore</span></div><div className="space-y-5 py-6"><div><p className="text-xs font-semibold uppercase tracking-wider text-[#8b968d]">What it solves</p><p className="mt-1 text-lg font-medium">A simpler way to stay consistent with your marketing.</p></div><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-white p-4"><p className="text-xs text-[#8b968d]">Audience</p><p className="mt-2 font-medium">Growing teams</p></div><div className="rounded-xl bg-white p-4"><p className="text-xs text-[#8b968d]">Core angle</p><p className="mt-2 font-medium">Clarity over noise</p></div></div></div></div></div></section>
     <section className="bg-white px-5 py-16 sm:px-6 sm:py-20"><div className="mx-auto max-w-6xl"><p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#e45b35]">Everything in one place</p><h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">From a blank page to a campaign worth testing.</h2><div className="mt-10 grid gap-4 md:grid-cols-3">{features.map((feature) => <article key={feature.title} className="rounded-2xl border border-[#e4e7e2] bg-[#f7f7f5] p-6"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f0e5d8] text-xl text-[#a14a36]">{feature.icon}</div><h3 className="mt-6 text-lg font-semibold">{feature.title}</h3><p className="mt-2 leading-7 text-[#647068]">{feature.text}</p></article>)}</div></div></section>
