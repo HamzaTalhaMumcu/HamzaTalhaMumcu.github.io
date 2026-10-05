@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   }
 
   let event: {
-    meta?: { event_name?: string; custom_data?: { user_id?: string } };
+    meta?: { event_name?: string; custom_data?: Record<string, unknown> | null };
     data?: { id?: string; attributes?: Record<string, unknown> };
   };
   try {
@@ -43,9 +43,11 @@ export async function POST(request: Request) {
   const attributes = event.data?.attributes;
   const eventName = event.meta?.event_name ?? "";
   const subscriptionId = event.data?.id;
-  const userId = event.meta?.custom_data?.user_id;
+  const customData = event.meta?.custom_data;
+  const userId = typeof customData?.user_id === "string" ? customData.user_id : undefined;
   if (!attributes || !subscriptionId) return NextResponse.json({ received: true });
   const variantId = String(attributes.variant_id ?? "");
+  console.info("Lemon Squeezy webhook received:", { eventName, subscriptionId, variantId });
   const plan = planKeyForVariant(variantId);
   if (!plan || plan === "free") {
     console.warn("Ignoring Lemon Squeezy event for unknown variant:", variantId);
@@ -62,8 +64,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing checkout user metadata." }, { status: 400 });
   }
 
-  const existing = await supabase.from("subscriptions").select("user_id").eq("provider_subscription_id", subscriptionId).maybeSingle();
-  const resolvedUserId = userId ?? existing.data?.user_id;
+  const existingByProvider = await supabase
+    .from("subscriptions")
+    .select("id, user_id")
+    .eq("provider_subscription_id", subscriptionId)
+    .limit(1)
+    .maybeSingle();
+  if (existingByProvider.error) {
+    console.error("Could not find Lemon Squeezy subscription:", {
+      code: existingByProvider.error.code,
+      message: existingByProvider.error.message,
+    });
+    return NextResponse.json({ error: "Could not persist subscription." }, { status: 500 });
+  }
+
+  const existingByUser = !existingByProvider.data && userId
+    ? await supabase
+        .from("subscriptions")
+        .select("id, user_id")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle()
+    : { data: null, error: null };
+  if (existingByUser.error) {
+    console.error("Could not find user's existing subscription:", {
+      code: existingByUser.error.code,
+      message: existingByUser.error.message,
+    });
+    return NextResponse.json({ error: "Could not persist subscription." }, { status: 500 });
+  }
+
+  const existing = existingByProvider.data ?? existingByUser.data;
+  const resolvedUserId = userId ?? existing?.user_id;
   if (!resolvedUserId) return NextResponse.json({ error: "Subscription owner not found." }, { status: 400 });
 
   const subscriptionFields = {
@@ -74,12 +106,17 @@ export async function POST(request: Request) {
     current_period_end: attributes.renews_at ? String(attributes.renews_at) : null,
     cancelled,
   };
-  const result = existing.data
-    ? await supabase.from("subscriptions").update(subscriptionFields).eq("provider_subscription_id", subscriptionId)
+  const result = existing
+    ? await supabase.from("subscriptions").update(subscriptionFields).eq("id", existing.id)
     : await supabase.from("subscriptions").insert({ user_id: resolvedUserId, ...subscriptionFields });
   const { error } = result;
   if (error) {
-    console.error("Could not persist Lemon Squeezy subscription:", error.message);
+    console.error("Could not persist Lemon Squeezy subscription:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     return NextResponse.json({ error: "Could not persist subscription." }, { status: 500 });
   }
   return NextResponse.json({ received: true });
