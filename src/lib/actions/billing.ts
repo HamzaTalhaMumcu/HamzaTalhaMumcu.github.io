@@ -55,8 +55,18 @@ export async function createCheckout(formData: FormData) {
     console.error("Lemon Squeezy checkout creation failed:", response.status, detail.slice(0, 500));
     throw new Error("Checkout could not be created. Please try again.");
   }
-  const payload = await response.json() as { data?: { attributes?: { urls?: { checkout?: string } } } };
-  const checkoutUrl = payload.data?.attributes?.urls?.checkout;
-  if (!checkoutUrl) throw new Error("Lemon Squeezy returned no checkout URL.");
+  const payload = await response.json() as {
+    data?: {
+      attributes?: {
+        url?: string;
+        urls?: { checkout?: string };
+      };
+    };
+  };
+  const checkoutUrl = payload.data?.attributes?.url || payload.data?.attributes?.urls?.checkout;
+  if (!checkoutUrl) {
+    console.error("Lemon Squeezy checkout response did not include a URL.");
+    throw new Error("Lemon Squeezy returned no checkout URL.");
+  }
   redirect(checkoutUrl);
 }
