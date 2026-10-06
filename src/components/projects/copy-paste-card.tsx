@@ -4,12 +4,19 @@ import { useState } from "react";
 
 function CopyButton({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
   async function copy() {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    try {
+      await navigator.clipboard.writeText(value);
+      setFailed(false);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setFailed(true);
+      window.setTimeout(() => setFailed(false), 2200);
+    }
   }
-  return <button type="button" onClick={copy} className="rounded-lg border border-[#d8ddd7] px-2.5 py-1 text-xs font-semibold text-[#647068] hover:border-[#e45b35] hover:text-[#e45b35]">{copied ? "Copied" : label}</button>;
+  return <button type="button" onClick={copy} className="rounded-lg border border-[#d8ddd7] px-2.5 py-1 text-xs font-semibold text-[#647068] hover:border-[#e45b35] hover:text-[#e45b35]">{failed ? "Copy failed" : copied ? "Copied" : label}</button>;
 }
 
 export function CopyPasteCard({
@@ -44,9 +51,6 @@ export function CopyPasteCard({
           <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#334038]">{value}</p>
         </div>
       ))}
-      <div className="mt-1">
-        <CopyButton label="Copy all" value={all} />
-      </div>
     </article>
   );
 }

@@ -46,7 +46,15 @@ function clean(value: string | null | undefined) {
 function parseGeneratedContent(content: string): GeneratedInsights {
   try {
     const parsed = JSON.parse(content) as GeneratedInsights;
-    if (!parsed.analysis?.summary || !parsed.analysis?.audience || !parsed.strategy?.objective || !Array.isArray(parsed.variants)) {
+    const angles = parsed.strategy?.psychologicalAngles;
+    const hasRequiredAngles = Array.isArray(angles)
+      && ["Time and fatigue", "Money and cost", "Curiosity and pattern break"].every((name) => {
+        const angle = angles.find((item) => item.name?.toLowerCase() === name.toLowerCase());
+        return Boolean(angle?.painPoint && angle.hooks?.fear && angle.hooks?.curiosity && angle.hooks?.roi && angle.cta);
+      });
+    if (!parsed.analysis?.summary || !parsed.analysis?.audience || !parsed.strategy?.objective
+      || !hasRequiredAngles || !parsed.strategy.visualBrief || !parsed.strategy.ugcScript
+      || !Array.isArray(parsed.variants)) {
       throw new Error("The AI response did not match Pitlo's output format.");
     }
     return parsed;
@@ -344,48 +352,50 @@ export async function generateMoreHooks(
     : mode === "soft"
       ? "Make the hooks empathetic, human, and storytelling-led while still including a clear CTA."
       : "Create three distinct direct-response hooks for A/B testing.";
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(clean(process.env.AI_MODEL) || "gemini-2.5-flash-lite")}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [{ text: `Return only valid JSON in this shape: {"variants":[{"kind":"hook","content":{"title":"string","body":"string","cta":"string","angle":"string"},"position":0}]}. ${modeInstruction} Never use generic slogans. Keep copy ready to paste into Meta or TikTok.` }],
-      },
-      contents: [{ role: "user", parts: [{ text: `Product: ${project.name}\nDescription: ${project.product_description ?? ""}\nExisting creative: ${source}` }] }],
-      generationConfig: { temperature: 0.8, responseMimeType: "application/json" },
-    }),
-    cache: "no-store",
-  });
-  if (!response.ok) return { error: `Gemini request failed (HTTP ${response.status}).` };
-  const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-  const content = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("");
-  if (!content) return { error: "Gemini returned an empty response." };
-  let parsed: { variants?: Array<{ kind: "hook"; content: Record<string, string>; position: number }> };
   try {
-    parsed = JSON.parse(content);
-  } catch {
-    return { error: "Gemini returned invalid JSON. Please try again." };
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(clean(process.env.AI_MODEL) || "gemini-2.5-flash-lite")}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: `Return only valid JSON in this shape: {"variants":[{"kind":"hook","content":{"title":"string","body":"string","cta":"string","angle":"string"},"position":0}]}. ${modeInstruction} Never use generic slogans. Keep copy ready to paste into Meta or TikTok.` }],
+        },
+        contents: [{ role: "user", parts: [{ text: `Product: ${project.name}\nDescription: ${project.product_description ?? ""}\nExisting creative: ${source}` }] }],
+        generationConfig: { temperature: 0.8, responseMimeType: "application/json" },
+      }),
+      cache: "no-store",
+    });
+    if (!response.ok) return { error: `Gemini request failed (HTTP ${response.status}).` };
+    const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const content = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("");
+    if (!content) return { error: "Gemini returned an empty response." };
+    const parsed = JSON.parse(content) as { variants?: Array<{ kind: "hook"; content: Record<string, string>; position: number }> };
+    if (!parsed.variants?.length || parsed.variants.some((variant) => !variant.content?.title || !variant.content?.body || !variant.content?.cta)) {
+      return { error: "Gemini returned incomplete hook variants. Please try again." };
+    }
+    const { data: latest } = await supabase
+      .from("ad_variants")
+      .select("position")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const startPosition = (latest?.position ?? -1) + 1;
+    const { error } = await supabase.from("ad_variants").insert(
+      parsed.variants.map((variant, index) => ({
+        project_id: projectId,
+        user_id: user.id,
+        kind: "hook" as const,
+        content: variant.content,
+        position: startPosition + index,
+      })),
+    );
+    if (error) return { error: error.message };
+    revalidatePath(`/projects/${projectId}`);
+    return { success: "Three new hook variants generated." };
+  } catch (error) {
+    console.error("Could not generate hook variants:", error);
+    return { error: "Could not generate hook variants. Please try again." };
   }
-  if (!parsed.variants?.length) return { error: "No hook variants were generated." };
-  const { data: latest } = await supabase
-    .from("ad_variants")
-    .select("position")
-    .eq("project_id", projectId)
-    .eq("user_id", user.id)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const startPosition = (latest?.position ?? -1) + 1;
-  const { error } = await supabase.from("ad_variants").insert(
-    parsed.variants.map((variant, index) => ({
-      project_id: projectId,
-      user_id: user.id,
-      kind: "hook" as const,
-      content: variant.content,
-      position: startPosition + index,
-    })),
-  );
-  if (error) return { error: error.message };
-  revalidatePath(`/projects/${projectId}`);
-  return { success: "Three new hook variants generated." };
 }
