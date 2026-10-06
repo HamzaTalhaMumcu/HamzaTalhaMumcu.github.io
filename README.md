@@ -23,7 +23,8 @@ The current foundation includes:
 
 The insight engine uses Gemini. The server visits the product URL,
 extracts the page content, and sends it to Gemini together with the user's advertising brief.
-Users never enter an API key; configure `AI_PROVIDER_API_KEY`, `AI_MODEL`, and optionally
+Users never enter an API key; configure `AI_PROVIDER_API_KEY` (or the legacy-compatible
+`GEMINI_API_KEY`), `AI_MODEL`, and optionally
 `AI_MONTHLY_QUOTA` is retained for local compatibility; production plan quotas are
 defined in `src/lib/billing/config.ts` and applied from the user's verified subscription.
 

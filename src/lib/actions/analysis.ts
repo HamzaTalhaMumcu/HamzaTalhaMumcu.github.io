@@ -192,8 +192,10 @@ export async function generateProjectInsights(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const apiKey = clean(process.env.AI_PROVIDER_API_KEY);
-  if (!apiKey) throw new Error("AI_PROVIDER_API_KEY is not configured on the server.");
+  const apiKey = clean(process.env.AI_PROVIDER_API_KEY || process.env.GEMINI_API_KEY);
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured. Add AI_PROVIDER_API_KEY to the server environment variables.");
+  }
   const { data: subscription } = await supabase
     .from("subscriptions")
     .select("plan_id, status, cancelled")
