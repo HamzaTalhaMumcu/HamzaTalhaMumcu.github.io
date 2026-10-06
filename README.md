@@ -14,6 +14,10 @@ The current foundation includes:
 - A real AI product insight engine that generates an audience, pain points, positioning, and promise
 - Campaign strategy with channels, messaging pillars, and creative directions
 - Starter hooks and ad copy persisted per project
+- Persistent Brand Brain context used in AI generations
+- Competitor URL analysis and differentiation insights
+- Style-controlled creative variations
+- Draft Campaign → Ad Set → Ad assembly from generated outputs
 - In-app feedback form with Supabase persistence and ownership-focused RLS
 - Free, Starter, Pro, and future X plan definitions shown in the dashboard
 
@@ -55,7 +59,7 @@ checkout. The webhook URL is `/api/webhooks/lemonsqueezy`.
 
 3. Apply `supabase/migrations/0001_initial_schema.sql`, `0002_add_ad_request.sql`,
    `0003_align_ad_variants_schema.sql`, `0004_add_ai_usage_quota.sql`, and
-   `0005_add_feedback.sql` to the Supabase project.
+   `0005_add_feedback.sql`, and `0007_mvp_capabilities.sql` to the Supabase project.
 
 4. Start the development server:
 

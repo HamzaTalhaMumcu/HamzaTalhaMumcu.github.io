@@ -6,6 +6,25 @@ import { createClient } from "@/lib/supabase/server";
 import { PLAN_LIMITS, planKeyFromId } from "@/lib/billing/config";
 
 function value(formData: FormData, key: string) { return String(formData.get(key) ?? "").trim(); }
+function competitorUrls(formData: FormData) {
+  const urls = value(formData, "competitors")
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  for (const competitor of urls) {
+    let parsed: URL;
+    try {
+      parsed = new URL(competitor);
+    } catch {
+      throw new Error("Each competitor must be a valid URL.");
+    }
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port) {
+      throw new Error("Competitor URLs must use HTTPS without credentials or custom ports.");
+    }
+  }
+  return urls;
+}
 
 export async function createProject(formData: FormData) {
   const supabase = await createClient();
@@ -25,7 +44,7 @@ export async function createProject(formData: FormData) {
   if ((count ?? 0) >= PLAN_LIMITS[activePlan].projects) {
     throw new Error(`Your ${activePlan} plan allows up to ${PLAN_LIMITS[activePlan].projects} projects.`);
   }
-  const { data, error } = await supabase.from("projects").insert({ user_id: user.id, name, product_url: productUrl, product_description: value(formData, "product_description") || null, ad_request: value(formData, "ad_request") || null }).select("id").single();
+  const { data, error } = await supabase.from("projects").insert({ user_id: user.id, name, product_url: productUrl, product_description: value(formData, "product_description") || null, ad_request: value(formData, "ad_request") || null, competitors: competitorUrls(formData) }).select("id").single();
   if (error) throw new Error(error.message);
   redirect(`/projects/${data.id}`);
 }
@@ -40,7 +59,7 @@ export async function updateProject(formData: FormData) {
   if (!name) throw new Error("Project name is required.");
   const productUrl = value(formData, "product_url");
   if (!productUrl) throw new Error("Product URL is required.");
-  const { error } = await supabase.from("projects").update({ name, product_url: productUrl, product_description: value(formData, "product_description") || null, ad_request: value(formData, "ad_request") || null }).eq("id", projectId).eq("user_id", user.id);
+  const { error } = await supabase.from("projects").update({ name, product_url: productUrl, product_description: value(formData, "product_description") || null, ad_request: value(formData, "ad_request") || null, competitors: competitorUrls(formData) }).eq("id", projectId).eq("user_id", user.id);
   if (error) throw new Error(error.message);
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/dashboard");

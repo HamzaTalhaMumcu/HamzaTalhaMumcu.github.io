@@ -13,6 +13,8 @@ type AnalysisResult = {
   painPoints: string[];
   promise: string;
   positioning: string;
+  differentiators: string[];
+  competitorInsights?: string[];
 };
 
 type StrategyResult = {
@@ -20,6 +22,7 @@ type StrategyResult = {
   channels: string[];
   messagingPillars: string[];
   creativeDirections: string[];
+  adAngles: string[];
 };
 
 type GeneratedInsights = {
@@ -128,12 +131,12 @@ async function readProductPage(url: string) {
     .slice(0, 8_000);
 }
 
-async function generateWithAi(apiKey: string, product: { name: string; url: string; description: string; adRequest: string; pageText: string }) {
+async function generateWithAi(apiKey: string, product: { name: string; url: string; description: string; adRequest: string; pageText: string; competitorText: string; variationStyle: string; brandContext: Record<string, string> }) {
   const model = process.env.AI_MODEL || "gemini-flash-lite-latest";
   const systemPrompt = `You are Pitlo's global English-speaking advertising strategist. Analyze the product and return only valid JSON.
 Use this exact structure:
-{"analysis":{"summary":"string","audience":"string","painPoints":["string"],"promise":"string","positioning":"string"},"strategy":{"objective":"string","channels":["string"],"messagingPillars":["string"],"creativeDirections":["string"]},"variants":[{"kind":"hook","content":{"title":"string","body":"string"},"position":0},{"kind":"copy","content":{"title":"string","body":"string","cta":"string"},"position":0}]}
-Generate at least 3 painPoints, 3 channels, 3 messagingPillars, 3 creativeDirections, 2 hooks, and 2 ad copies. Write every user-facing value in clear, natural English for a global audience. Be specific, credible, and avoid exaggerated claims.`;
+{"analysis":{"summary":"string","audience":"string","painPoints":["string"],"promise":"string","positioning":"string","differentiators":["string"],"competitorInsights":["string"]},"strategy":{"objective":"string","channels":["string"],"messagingPillars":["string"],"creativeDirections":["string"],"adAngles":["string"]},"variants":[{"kind":"hook","content":{"title":"string","body":"string","angle":"string"},"position":0},{"kind":"copy","content":{"title":"string","body":"string","cta":"string","angle":"string"},"position":0}]}
+Generate at least 3 painPoints, 3 differentiators, 3 channels, 3 messagingPillars, 3 creativeDirections, 3 adAngles, 2 hooks, and 2 ad copies. Use the requested variation style for the variants. If competitor text is empty, return an empty competitorInsights array. Write every user-facing value in clear, natural English for a global audience. Be specific, credible, and avoid exaggerated claims.`;
   const userPrompt = `Product information:\n${JSON.stringify(product)}`;
   const request = (requestModel: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(requestModel)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
@@ -196,6 +199,11 @@ export async function generateProjectInsights(formData: FormData) {
     .select("plan_id, status, cancelled")
     .eq("user_id", user.id)
     .maybeSingle();
+  const { data: brand } = await supabase
+    .from("profiles")
+    .select("brand_name, brand_description, brand_voice, brand_values, preferred_words, avoid_words")
+    .eq("id", user.id)
+    .maybeSingle();
   const activePlan = subscription && !subscription.cancelled && ["active", "on_trial", "paused"].includes(subscription.status)
     ? planKeyFromId(subscription.plan_id)
     : "free";
@@ -214,7 +222,7 @@ export async function generateProjectInsights(formData: FormData) {
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("name, product_url, product_description, ad_request")
+    .select("name, product_url, product_description, ad_request, competitors")
     .eq("id", projectId)
     .eq("user_id", user.id)
     .single();
@@ -222,12 +230,31 @@ export async function generateProjectInsights(formData: FormData) {
   if (projectError || !project) throw new Error("Project could not be found.");
 
   const pageText = await readProductPage(clean(project.product_url));
+  const competitorText = (await Promise.all((project.competitors ?? []).map(async (competitorUrl) => {
+    try {
+      return `${competitorUrl}\n${await readProductPage(competitorUrl)}`;
+    } catch (error) {
+      console.warn("Could not read competitor URL:", competitorUrl, error instanceof Error ? error.message : "unknown error");
+      return "";
+    }
+  }))).filter(Boolean).join("\n\n").slice(0, 20_000);
+  const variationStyle = clean(String(formData.get("variation_style") ?? "")) || "balanced";
   const { analysis, strategy, variants } = await generateWithAi(apiKey, {
     name: clean(project.name),
     url: clean(project.product_url),
     description: clean(project.product_description),
     adRequest: clean(project.ad_request),
     pageText,
+    competitorText,
+    variationStyle,
+    brandContext: {
+      name: brand?.brand_name ?? "",
+      description: brand?.brand_description ?? "",
+      voice: brand?.brand_voice ?? "",
+      values: brand?.brand_values ?? "",
+      preferredWords: brand?.preferred_words ?? "",
+      avoidWords: brand?.avoid_words ?? "",
+    },
   });
 
   const { error: clearVariantsError } = await supabase.from("ad_variants").delete().eq("project_id", projectId).eq("user_id", user.id);
