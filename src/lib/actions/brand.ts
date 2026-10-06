@@ -12,8 +12,7 @@ export async function saveBrandProfile(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { error } = await supabase.from("profiles").upsert({
-    id: user.id,
+  const { error } = await supabase.from("profiles").update({
     brand_name: text(formData, "brand_name"),
     brand_description: text(formData, "brand_description"),
     brand_voice: text(formData, "brand_voice"),
@@ -23,4 +22,17 @@ export async function saveBrandProfile(formData: FormData) {
   });
   if (error) throw new Error(error.message);
   revalidatePath("/profile");
+}
+
+export async function saveBrandProfileWithState(
+  _previousState: { error?: string; success?: string },
+  formData: FormData,
+) {
+  try {
+    await saveBrandProfile(formData);
+    return { success: "Brand context saved." };
+  } catch (error) {
+    console.error("Could not save brand context:", error);
+    return { error: error instanceof Error ? error.message : "Could not save brand context." };
+  }
 }

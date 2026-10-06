@@ -44,3 +44,16 @@ export async function createCampaign(formData: FormData) {
   }
   revalidatePath(`/projects/${projectId}`);
 }
+
+export async function createCampaignWithState(
+  _previousState: { error?: string; success?: string },
+  formData: FormData,
+) {
+  try {
+    await createCampaign(formData);
+    return { success: "Draft campaign created." };
+  } catch (error) {
+    console.error("Could not create draft campaign:", error);
+    return { error: error instanceof Error ? error.message : "Could not create draft campaign." };
+  }
+}

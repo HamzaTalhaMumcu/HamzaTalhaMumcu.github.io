@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PLAN_LIMITS, planKeyFromId, variantIdForPlan } from "@/lib/billing/config";
 import { plans } from "@/lib/billing/plans";
 import { createCheckout } from "@/lib/actions/billing";
-import { saveBrandProfile } from "@/lib/actions/brand";
+import { BrandContextForm } from "@/components/profile/brand-context-form";
 
 export const metadata: Metadata = {
   title: "Profile",
@@ -75,15 +75,7 @@ export default async function ProfilePage() {
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#8b968d]">Brand Brain</p>
         <h2 className="mt-2 text-2xl font-semibold">Give PITLO a consistent brand context</h2>
         <p className="mt-2 text-sm leading-6 text-[#647068]">Saved brand guidance will be used in future product analyses, strategies, and creative generations.</p>
-        <form action={saveBrandProfile} className="mt-6 grid gap-4 sm:grid-cols-2">
-          <label className="text-sm font-medium text-[#334038]">Brand name<input name="brand_name" defaultValue={brand?.brand_name ?? ""} className="mt-2 w-full rounded-xl border border-[#d8ddd7] px-4 py-3 outline-none focus:border-[#e45b35]" /></label>
-          <label className="text-sm font-medium text-[#334038]">Brand voice<input name="brand_voice" defaultValue={brand?.brand_voice ?? ""} placeholder="e.g. clear, warm, confident" className="mt-2 w-full rounded-xl border border-[#d8ddd7] px-4 py-3 outline-none focus:border-[#e45b35]" /></label>
-          <label className="text-sm font-medium text-[#334038] sm:col-span-2">Brand description<textarea name="brand_description" rows={3} defaultValue={brand?.brand_description ?? ""} className="mt-2 w-full resize-none rounded-xl border border-[#d8ddd7] px-4 py-3 outline-none focus:border-[#e45b35]" /></label>
-          <label className="text-sm font-medium text-[#334038]">Brand values<textarea name="brand_values" rows={3} defaultValue={brand?.brand_values ?? ""} placeholder="One value per line" className="mt-2 w-full resize-none rounded-xl border border-[#d8ddd7] px-4 py-3 outline-none focus:border-[#e45b35]" /></label>
-          <label className="text-sm font-medium text-[#334038]">Preferred words<textarea name="preferred_words" rows={3} defaultValue={brand?.preferred_words ?? ""} placeholder="Words and phrases to prefer" className="mt-2 w-full resize-none rounded-xl border border-[#d8ddd7] px-4 py-3 outline-none focus:border-[#e45b35]" /></label>
-          <label className="text-sm font-medium text-[#334038] sm:col-span-2">Words or claims to avoid<textarea name="avoid_words" rows={3} defaultValue={brand?.avoid_words ?? ""} placeholder="Words, claims, or tones to avoid" className="mt-2 w-full resize-none rounded-xl border border-[#d8ddd7] px-4 py-3 outline-none focus:border-[#e45b35]" /></label>
-          <button type="submit" className="w-fit rounded-xl bg-[#17201b] px-5 py-3 text-sm font-semibold text-white hover:bg-[#2b3d32]">Save brand context</button>
-        </form>
+        <BrandContextForm brand={brand} />
       </section>
       <section className="mt-8">
         <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
