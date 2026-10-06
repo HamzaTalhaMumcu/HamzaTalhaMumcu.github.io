@@ -132,7 +132,12 @@ async function readProductPage(url: string) {
 }
 
 async function generateWithAi(apiKey: string, product: { name: string; url: string; description: string; adRequest: string; pageText: string; competitorText: string; variationStyle: string; brandContext: Record<string, string> }) {
-  const model = process.env.AI_MODEL || "gemini-flash-lite-latest";
+  const configuredModel = clean(process.env.AI_MODEL) || "gemini-2.5-flash-lite";
+  const models = Array.from(new Set([
+    configuredModel,
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-lite",
+  ]));
   const systemPrompt = `You are Pitlo's global English-speaking advertising strategist. Analyze the product and return only valid JSON.
 Use this exact structure:
 {"analysis":{"summary":"string","audience":"string","painPoints":["string"],"promise":"string","positioning":"string","differentiators":["string"],"competitorInsights":["string"]},"strategy":{"objective":"string","channels":["string"],"messagingPillars":["string"],"creativeDirections":["string"],"adAngles":["string"]},"variants":[{"kind":"hook","content":{"title":"string","body":"string","angle":"string"},"position":0},{"kind":"copy","content":{"title":"string","body":"string","cta":"string","angle":"string"},"position":0}]}
@@ -149,7 +154,8 @@ Generate at least 3 painPoints, 3 differentiators, 3 channels, 3 messagingPillar
     cache: "no-store",
   });
 
-  let response = await request(model);
+  let response = await request(models[0]);
+  let model = models[0];
   for (let attempt = 0; attempt < 3 && [429, 500, 502, 503, 504].includes(response.status); attempt += 1) {
     const retryAfter = Number(response.headers.get("retry-after"));
     const delay = Number.isFinite(retryAfter) && retryAfter > 0
@@ -158,9 +164,13 @@ Generate at least 3 painPoints, 3 differentiators, 3 channels, 3 messagingPillar
     await new Promise((resolve) => setTimeout(resolve, delay));
     response = await request(model);
   }
-  if (!response.ok && [500, 502, 503, 504].includes(response.status) && model !== "gemini-flash-lite-latest") {
-    console.warn(`Gemini model ${model} returned HTTP ${response.status}; trying gemini-flash-lite-latest.`);
-    response = await request("gemini-flash-lite-latest");
+  if (!response.ok && [404, 500, 502, 503, 504].includes(response.status)) {
+    for (const fallbackModel of models.slice(1)) {
+      console.warn(`Gemini model ${model} returned HTTP ${response.status}; trying ${fallbackModel}.`);
+      response = await request(fallbackModel);
+      model = fallbackModel;
+      if (response.ok) break;
+    }
   }
 
   if (!response.ok) {
@@ -170,7 +180,7 @@ Generate at least 3 painPoints, 3 differentiators, 3 channels, 3 messagingPillar
       throw new Error("Gemini API anahtarı geçersiz veya bu model için yetkili değil.");
     }
     if (response.status === 404) {
-      throw new Error(`Gemini modeli bulunamadı: ${model}. AI_MODEL değerini kontrol edin.`);
+      throw new Error(`Gemini modeli bulunamadı. AI_MODEL değerini kontrol edin (son denenen model: ${model}).`);
     }
     if (response.status === 429) {
       throw new Error("Gemini kullanım kotası aşıldı. Biraz bekleyip tekrar deneyin.");
