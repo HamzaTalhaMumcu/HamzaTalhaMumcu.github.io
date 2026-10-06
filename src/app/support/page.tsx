@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createDonationCheckout } from "@/lib/actions/donations";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Support PITLO",
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SupportPage() {
+export default async function SupportPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <main className="min-h-screen bg-[#f7f7f5] px-5 py-8 text-[#17201b] sm:px-6 sm:py-12">
       <div className="mx-auto max-w-2xl">
@@ -18,8 +22,8 @@ export default function SupportPage() {
           PITLO<span className="text-[#e45b35]">.</span>
         </Link>
         <div className="mt-6">
-          <Link href="/dashboard" className="inline-flex rounded-xl border border-[#d8ddd7] px-4 py-2 text-sm font-semibold text-[#334038] hover:border-[#e45b35] hover:text-[#e45b35]">
-            Back to dashboard
+          <Link href={user ? "/dashboard" : "/login"} className="inline-flex rounded-xl border border-[#d8ddd7] px-4 py-2 text-sm font-semibold text-[#334038] hover:border-[#e45b35] hover:text-[#e45b35]">
+            {user ? "Back to dashboard" : "Log in to continue"}
           </Link>
         </div>
         <section className="mt-12 rounded-[2rem] bg-white p-7 shadow-sm sm:p-10">
