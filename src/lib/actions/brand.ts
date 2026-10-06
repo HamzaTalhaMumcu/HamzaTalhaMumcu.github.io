@@ -19,7 +19,7 @@ export async function saveBrandProfile(formData: FormData) {
     brand_values: text(formData, "brand_values"),
     preferred_words: text(formData, "preferred_words"),
     avoid_words: text(formData, "avoid_words"),
-  });
+  }).eq("id", user.id);
   if (error) throw new Error(error.message);
   revalidatePath("/profile");
 }
