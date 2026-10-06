@@ -58,3 +58,37 @@ export async function createCampaignWithState(
     return { error: error instanceof Error ? error.message : "Could not create draft campaign." };
   }
 }
+
+export async function updateCampaign(
+  _previousState: { error?: string; success?: string },
+  formData: FormData,
+) {
+  const campaignId = String(formData.get("campaign_id") ?? "").trim();
+  const projectId = String(formData.get("project_id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const status = String(formData.get("status") ?? "").trim();
+  const validStatuses = ["draft", "ready", "archived"] as const;
+  if (!campaignId || !projectId || !name) return { error: "Campaign ID, project, and name are required." };
+  if (!validStatuses.includes(status as (typeof validStatuses)[number])) return { error: "Invalid campaign status." };
+  if (name.length > 120) return { error: "Campaign name must be 120 characters or fewer." };
+  const nextStatus = status as (typeof validStatuses)[number];
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in to update a campaign." };
+
+  const { error } = await supabase
+    .from("campaigns")
+    .update({ name, status: nextStatus })
+    .eq("id", campaignId)
+    .eq("project_id", projectId)
+    .eq("user_id", user.id);
+  if (error) {
+    console.error("Could not update campaign:", error);
+    return { error: error.message };
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/campaigns/${campaignId}`);
+  return { success: "Campaign updated." };
+}
