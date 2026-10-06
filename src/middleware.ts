@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   const requestWithNonce = new NextRequest(request, { headers: requestHeaders });
   const { response, user } = await updateSession(requestWithNonce);
   const { pathname } = request.nextUrl;
-  if ((pathname.startsWith("/dashboard") || pathname.startsWith("/projects")) && !user) {
+  if ((pathname.startsWith("/dashboard") || pathname.startsWith("/projects") || pathname.startsWith("/profile") || pathname.startsWith("/feedback")) && !user) {
     const redirectResponse = NextResponse.redirect(new URL("/login", request.url));
     Object.entries(securityHeaders(nonce)).forEach(([key, value]) => redirectResponse.headers.set(key, value));
     return redirectResponse;
