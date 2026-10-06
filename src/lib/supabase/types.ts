@@ -38,6 +38,14 @@ export type AdvertisingStrategy = {
     messagingPillars: string[];
     creativeDirections: string[];
     adAngles: string[];
+    psychologicalAngles?: Array<{
+      name: string;
+      painPoint: string;
+      hooks: { fear: string; curiosity: string; roi: string };
+      cta: string;
+    }>;
+    visualBrief?: string;
+    ugcScript?: string;
   };
   created_at: string;
   updated_at: string;

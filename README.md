@@ -17,6 +17,9 @@ The current foundation includes:
 - Persistent Brand Brain context used in AI generations
 - Competitor URL analysis and differentiation insights
 - Style-controlled creative variations
+- Direct-response psychological angles with fear, curiosity, and ROI hooks
+- Copy-paste creative cards with visual briefs and UGC scripts
+- On-demand A/B hook variants
 - Draft Campaign → Ad Set → Ad assembly from generated outputs
 - In-app feedback form with Supabase persistence and ownership-focused RLS
 - Free, Starter, Pro, and future X plan definitions shown in the dashboard
