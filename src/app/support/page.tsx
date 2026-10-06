@@ -17,6 +17,11 @@ export default function SupportPage() {
         <Link href="/" className="text-xl font-bold tracking-tight">
           PITLO<span className="text-[#e45b35]">.</span>
         </Link>
+        <div className="mt-6">
+          <Link href="/dashboard" className="inline-flex rounded-xl border border-[#d8ddd7] px-4 py-2 text-sm font-semibold text-[#334038] hover:border-[#e45b35] hover:text-[#e45b35]">
+            Back to dashboard
+          </Link>
+        </div>
         <section className="mt-12 rounded-[2rem] bg-white p-7 shadow-sm sm:p-10">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#e45b35]">Support PITLO</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">Help keep clearer advertising tools growing.</h1>
