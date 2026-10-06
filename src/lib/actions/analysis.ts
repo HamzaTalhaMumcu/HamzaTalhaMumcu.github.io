@@ -143,16 +143,26 @@ Use this exact structure:
 {"analysis":{"summary":"string","audience":"string","painPoints":["string"],"promise":"string","positioning":"string","differentiators":["string"],"competitorInsights":["string"]},"strategy":{"objective":"string","channels":["string"],"messagingPillars":["string"],"creativeDirections":["string"],"adAngles":["string"]},"variants":[{"kind":"hook","content":{"title":"string","body":"string","angle":"string"},"position":0},{"kind":"copy","content":{"title":"string","body":"string","cta":"string","angle":"string"},"position":0}]}
 Generate at least 3 painPoints, 3 differentiators, 3 channels, 3 messagingPillars, 3 creativeDirections, 3 adAngles, 2 hooks, and 2 ad copies. Use the requested variation style for the variants. If competitor text is empty, return an empty competitorInsights array. Write every user-facing value in clear, natural English for a global audience. Be specific, credible, and avoid exaggerated claims.`;
   const userPrompt = `Product information:\n${JSON.stringify(product)}`;
-  const request = (requestModel: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(requestModel)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-      generationConfig: { temperature: 0.7, responseMimeType: "application/json" },
-    }),
-    cache: "no-store",
-  });
+  const request = async (requestModel: string) => {
+    try {
+      return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(requestModel)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          generationConfig: { temperature: 0.7, responseMimeType: "application/json" },
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(25_000),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "TimeoutError") {
+        throw new Error("Gemini yanıtı zaman aşımına uğradı. Lütfen tekrar deneyin.");
+      }
+      throw error;
+    }
+  };
 
   let response = await request(models[0]);
   let model = models[0];
