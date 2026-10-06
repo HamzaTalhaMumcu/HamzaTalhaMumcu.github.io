@@ -59,6 +59,7 @@ export type Campaign = {
   project_id: string;
   user_id: string;
   name: string;
+  platform: string;
   status: "draft" | "ready" | "archived";
   objective: string | null;
   strategy_snapshot: Record<string, unknown>;

@@ -23,6 +23,7 @@ export async function createCampaign(formData: FormData) {
     project_id: projectId,
     user_id: user.id,
     name,
+    platform: "meta",
     objective: strategy.result.objective ?? null,
     strategy_snapshot: strategy.result,
     creative_snapshot: variants ?? [],

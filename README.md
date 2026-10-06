@@ -60,8 +60,8 @@ checkout. The webhook URL is `/api/webhooks/lemonsqueezy`.
 
 3. Apply `supabase/migrations/0001_initial_schema.sql`, `0002_add_ad_request.sql`,
    `0003_align_ad_variants_schema.sql`, `0004_add_ai_usage_quota.sql`, `0005_add_feedback.sql`,
-   `0007_mvp_capabilities.sql`, `0008_repair_ai_quota.sql`, and `0009_repair_campaign_columns.sql`
-   to the Supabase project.
+   `0007_mvp_capabilities.sql`, `0008_repair_ai_quota.sql`, `0009_repair_campaign_columns.sql`,
+   and `0010_repair_campaign_platform.sql` to the Supabase project.
 
 4. Start the development server:
 
