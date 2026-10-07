@@ -51,12 +51,86 @@ export type AdvertisingStrategy = {
   updated_at: string;
 };
 
+export type PsychologicalAngle = {
+  name: string;
+  painPoint: string;
+  hooks: { fear: string; curiosity: string; roi: string };
+  cta: string;
+};
+
+export function normalizePsychologicalAngles(value: unknown): PsychologicalAngle[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    const hooks = record.hooks && typeof record.hooks === "object"
+      ? record.hooks as Record<string, unknown>
+      : {};
+    const name = typeof record.name === "string"
+      ? record.name
+      : typeof record.title === "string"
+        ? record.title
+        : "";
+    const painPoint = typeof record.painPoint === "string"
+      ? record.painPoint
+      : typeof record.description === "string"
+        ? record.description
+        : "";
+    const fear = typeof hooks.fear === "string" ? hooks.fear : "";
+    const curiosity = typeof hooks.curiosity === "string" ? hooks.curiosity : "";
+    const roi = typeof hooks.roi === "string" ? hooks.roi : "";
+    const cta = typeof record.cta === "string"
+      ? record.cta
+      : typeof record.callToAction === "string"
+        ? record.callToAction
+        : "";
+    if (!name && !painPoint && !fear && !curiosity && !roi && !cta) return [];
+    return [{ name, painPoint, hooks: { fear, curiosity, roi }, cta }];
+  });
+}
+
+export type AdVariantContent = {
+  title?: string;
+  body?: string;
+  cta?: string;
+  angle?: string;
+  visualBrief?: string;
+  ugcScript?: string;
+};
+
+export function normalizeAdVariantContent(value: unknown): AdVariantContent {
+  if (!value || typeof value !== "object") return {};
+  const record = value as Record<string, unknown>;
+  const text = (key: string) => typeof record[key] === "string" ? record[key] : undefined;
+  return {
+    title: text("title"),
+    body: text("body"),
+    cta: text("cta"),
+    angle: text("angle"),
+    visualBrief: text("visualBrief"),
+    ugcScript: text("ugcScript"),
+  };
+}
+
+export function normalizeTextArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === "string") return [item];
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    for (const key of ["name", "title", "description", "text", "value"]) {
+      if (typeof record[key] === "string") return [record[key]];
+    }
+    return [];
+  });
+}
+
 export type AdVariant = {
   id: string;
   project_id: string;
   user_id: string;
   kind: "hook" | "copy";
-  content: Record<string, string>;
+  content: AdVariantContent;
   position: number;
   created_at: string;
   updated_at: string;
