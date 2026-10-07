@@ -12,18 +12,21 @@ function competitorUrls(formData: FormData) {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 5);
-  for (const competitor of urls) {
+  return urls.map((competitor) => {
+    const normalized = /^[a-z][a-z\d+\-.]*:\/\//i.test(competitor)
+      ? competitor
+      : `https://${competitor}`;
     let parsed: URL;
     try {
-      parsed = new URL(competitor);
+      parsed = new URL(normalized);
     } catch {
       throw new Error("Each competitor must be a valid URL.");
     }
     if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port) {
       throw new Error("Competitor URLs must use HTTPS without credentials or custom ports.");
     }
-  }
-  return urls;
+    return parsed.toString();
+  });
 }
 
 export async function createProject(formData: FormData) {
