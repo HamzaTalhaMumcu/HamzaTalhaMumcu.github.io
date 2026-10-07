@@ -28,6 +28,11 @@ export const metadata: Metadata = {
     title: "PITLO — Your AI advertising team",
     description:
       "Turn your product into a clear audience, advertising strategy, hooks, and ad copy.",
+    images: [
+      {
+        url: "/og-image.png",
+      },
+    ],
   },
   twitter: {
     card: "summary",
