@@ -34,24 +34,24 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       if (result.error) {
         const message = result.error.message.toLowerCase();
         if (message.includes("user already registered")) {
-          setError("Bu e-posta adresi zaten kayıtlı. Giriş yapmayı deneyin.");
+          setError("This email address is already registered. Try logging in instead.");
         } else if (message.includes("email signups are disabled")) {
-          setError("E-posta ile kayıt şu anda Supabase ayarlarında devre dışı.");
+          setError("Email sign-ups are currently disabled in the Supabase settings.");
         } else if (message.includes("redirect") || message.includes("not allowed")) {
-          setError("Kayıt yönlendirmesi izinli değil. Supabase URL Configuration ayarlarını kontrol edin.");
+          setError("The sign-up redirect is not allowed. Check your Supabase URL Configuration settings.");
         } else if (message.includes("invalid api key")) {
-          setError("Supabase anahtarı geçersiz. NEXT_PUBLIC_SUPABASE_ANON_KEY değerini kontrol edin.");
+          setError("The Supabase key is invalid. Check the NEXT_PUBLIC_SUPABASE_ANON_KEY value.");
         } else {
           setError(result.error.message);
         }
       } else if (mode === "signup" && !result.data.session) {
-        setError("Kayıt tamamlandı. Hesabınızı etkinleştirmek için e-postanızı kontrol edin.");
+        setError("Sign-up complete. Check your email to activate your account.");
       } else {
         router.push("/dashboard");
       }
     } catch (caughtError) {
       console.error("Authentication request failed:", caughtError);
-      setError("Kayıt sırasında bağlantı hatası oluştu. Lütfen tekrar deneyin.");
+      setError("A connection error occurred during sign-up. Please try again.");
     } finally {
       setLoading(false);
     }

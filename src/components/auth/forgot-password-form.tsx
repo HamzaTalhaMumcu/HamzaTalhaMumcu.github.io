@@ -18,7 +18,7 @@ export function ForgotPasswordForm() {
       redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
     });
     if (resetError) setError(resetError.message);
-    else setMessage("Şifre yenileme bağlantısı e-posta adresinize gönderildi.");
+    else setMessage("A password reset link has been sent to your email address.");
     setLoading(false);
   }
 

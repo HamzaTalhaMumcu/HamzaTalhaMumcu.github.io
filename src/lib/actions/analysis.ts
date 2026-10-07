@@ -193,22 +193,22 @@ Never produce generic academic slogans such as "Market with confidence" or "Clar
     const detail = await response.text();
     console.error("AI provider request failed:", response.status, detail.slice(0, 500));
     if (response.status === 401 || response.status === 403) {
-      throw new Error("Gemini API anahtarı geçersiz veya bu model için yetkili değil.");
+      throw new Error("The Gemini API key is invalid or is not authorized for this model.");
     }
     if (response.status === 404) {
-      throw new Error(`Gemini modeli bulunamadı. AI_MODEL değerini kontrol edin (son denenen model: ${model}).`);
+      throw new Error(`The Gemini model was not found. Check AI_MODEL (last attempted model: ${model}).`);
     }
     if (response.status === 429) {
-      throw new Error("Gemini kullanım kotası aşıldı. Biraz bekleyip tekrar deneyin.");
+      throw new Error("The Gemini usage quota has been exceeded. Please wait and try again.");
     }
-    throw new Error(`Gemini isteği başarısız oldu (HTTP ${response.status}). Terminal logundaki sağlayıcı detayını kontrol edin.`);
+    throw new Error(`The Gemini request failed (HTTP ${response.status}). Check the provider details in the server logs.`);
   }
 
   const payload = await response.json() as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   };
   const content = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("");
-  if (!content) throw new Error("AI sağlayıcısı boş yanıt döndürdü. Lütfen tekrar deneyin.");
+  if (!content) throw new Error("The AI provider returned an empty response. Please try again.");
   return parseGeneratedContent(content);
 }
 
@@ -242,10 +242,10 @@ export async function generateProjectInsights(formData: FormData) {
   });
   if (quotaError) {
     console.error("AI quota check failed:", quotaError.message);
-    throw new Error("AI kullanım kotası kontrol edilemedi. Supabase migration'larını uygulayın.");
+    throw new Error("The AI usage quota could not be checked. Apply the Supabase migrations.");
   }
   if (!quotaAvailable) {
-    throw new Error(`Aylık AI analiz kotanız doldu (${monthlyQuota} analiz). Gelecek ay tekrar deneyin.`);
+    throw new Error(`Your monthly AI analysis quota is full (${monthlyQuota} analyses). Please try again next month.`);
   }
 
   const { data: project, error: projectError } = await supabase

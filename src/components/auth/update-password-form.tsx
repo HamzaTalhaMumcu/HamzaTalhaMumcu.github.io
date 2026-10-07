@@ -15,7 +15,7 @@ export function UpdatePasswordForm() {
     event.preventDefault();
     setError(null);
     if (password !== confirmation) {
-      setError("Şifreler eşleşmiyor.");
+      setError("Passwords do not match.");
       return;
     }
     setLoading(true);
