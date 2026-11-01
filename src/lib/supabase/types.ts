@@ -34,6 +34,7 @@ export type AdvertisingStrategy = {
   user_id: string;
   result: {
     objective: string;
+    firstTestRecommendation?: string;
     channels: string[];
     messagingPillars: string[];
     creativeDirections: string[];
